@@ -1,0 +1,831 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1b1b1f">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<title>Mini Print</title>
+<style>
+:root{--bg:#1b1b1f;--card:#26262c;--line:#3a3a42;--txt:#ececf1;--dim:#9a9aa6;--acc:#ff7a45;--ok:#4cc38a;--bad:#ef5350}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.4 system-ui,-apple-system,Roboto,sans-serif}
+body{padding-bottom:calc(150px + env(safe-area-inset-bottom))}
+header{position:sticky;top:0;z-index:10;background:var(--bg);padding:10px 12px 0;border-bottom:1px solid var(--line)}
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+h1{font-size:18px;margin:0}
+#chip{border:1px solid var(--line);background:var(--card);color:var(--txt);border-radius:999px;padding:6px 12px;font-size:13px}
+#chip.on{border-color:var(--ok);color:var(--ok)}
+nav{display:flex;gap:4px;overflow-x:auto;padding-bottom:8px}
+nav button{flex:1;min-width:68px;border:0;background:var(--card);color:var(--dim);padding:8px 4px;border-radius:10px;font-size:13px}
+nav button.act{background:var(--acc);color:#111;font-weight:600}
+main{padding:12px;max-width:560px;margin:0 auto}
+.tab{display:flex;flex-direction:column;gap:12px}
+.btn{display:block;text-align:center;border:1px solid var(--line);background:var(--card);color:var(--txt);border-radius:12px;padding:12px 14px;font-size:15px;cursor:pointer}
+.btn.primary{background:var(--acc);border-color:var(--acc);color:#111;font-weight:700}
+.btn.big{padding:16px;font-size:17px}
+.btn:disabled{opacity:.5}
+.row{display:flex;gap:8px;align-items:center}
+.row>*{flex:1}
+.row>.fix{flex:0 0 auto}
+.field{display:flex;flex-direction:column;gap:4px}
+.field>span{font-size:13px;color:var(--dim);display:flex;justify-content:space-between}
+select,input[type=text],input[type=number],input[type=password],textarea{width:100%;background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit}
+textarea{min-height:110px;resize:vertical}
+input[type=range]{width:100%;accent-color:var(--acc)}
+.chk{display:flex;gap:10px;align-items:center;font-size:15px}
+.chk input{width:20px;height:20px;accent-color:var(--acc)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips button{flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--txt);border-radius:999px;padding:6px 12px;font-size:13px}
+.chips button.act{background:var(--acc);color:#111;border-color:var(--acc)}
+.vwrap{position:relative;background:#000;border-radius:12px;overflow:hidden;aspect-ratio:3/4;display:flex;align-items:center;justify-content:center}
+video{width:100%;height:100%;object-fit:cover}
+#camMsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--dim)}
+#cropWrap{display:flex;justify-content:center;background:#000;border-radius:12px;padding:6px;min-height:80px}
+#crop{touch-action:none;max-width:100%}
+.prev{background:#fff;border-radius:6px;padding:0;overflow:hidden;max-height:340px;overflow-y:auto}
+.prev canvas{display:block;width:100%;max-width:384px;margin:0 auto;image-rendering:pixelated}
+.hint{font-size:13px;color:var(--dim)}
+#bar{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));z-index:20}
+#bar .in{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:8px}
+#prog{height:5px;background:var(--card);border-radius:3px;overflow:hidden}
+#prog i{display:block;height:100%;width:0;background:var(--acc);transition:width .1s}
+#copiesBox{display:flex;align-items:center;gap:6px;flex:0 0 96px}
+#copiesBox input{text-align:center;padding:10px 4px}
+#log{background:#101013;border:1px solid var(--line);border-radius:10px;padding:8px;font:12px/1.35 ui-monospace,monospace;height:180px;overflow:auto;white-space:pre-wrap;color:#b9d7c4}
+#toast{position:fixed;left:50%;bottom:calc(120px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:#000c;color:#fff;padding:10px 16px;border-radius:12px;opacity:0;pointer-events:none;transition:.2s;z-index:50;max-width:90%;text-align:center;font-size:14px}
+#toast.on{opacity:1;transform:translateX(-50%)}
+#warn{background:#4a2a1a;border:1px solid var(--acc);padding:10px;border-radius:10px;font-size:14px}
+details{background:var(--card);border-radius:12px;padding:10px 12px}
+summary{cursor:pointer;font-weight:600}
+details .field,details .row{margin-top:10px}
+</style>
+</head>
+<body>
+<header>
+  <div class="top"><h1>🖨️ Mini Print</h1><button id="chip">Imprimante : non connectée</button></div>
+  <nav id="nav">
+    <button data-t="cam" class="act">📷 Photo</button>
+    <button data-t="img">🖼️ Image</button>
+    <button data-t="txt">📝 Texte</button>
+    <button data-t="lbl">🏷️ Étiquette</button>
+    <button data-t="set">⚙️ Réglages</button>
+  </nav>
+</header>
+
+<main>
+  <div id="warn" hidden></div>
+
+  <!-- PHOTO -->
+  <section id="t-cam" class="tab">
+    <div class="vwrap"><video id="video" playsinline muted autoplay></video><div id="camMsg">Caméra…</div></div>
+    <div class="row">
+      <button class="btn primary big" id="shot">📸 Prendre la photo</button>
+      <button class="btn fix big" id="flip" title="Changer de caméra">🔄</button>
+    </div>
+    <label class="chk"><input type="checkbox" id="optSave"> Enregistrer la photo dans le téléphone</label>
+    <label class="chk"><input type="checkbox" id="optInstant"> Imprimer tout de suite (sans rogner)</label>
+    <label class="btn">📱 Utiliser l'appareil photo du téléphone<input type="file" id="nativeCam" accept="image/*" capture="environment" hidden></label>
+    <div class="hint">Astuce : avec « Imprimer tout de suite » coché, la photo part à l'impression dès que tu appuies. Sinon elle s'ouvre dans l'onglet Image pour la rogner.</div>
+  </section>
+
+  <!-- IMAGE -->
+  <section id="t-img" class="tab" hidden>
+    <label class="btn">📂 Choisir dans la galerie<input type="file" id="pick" accept="image/*" hidden></label>
+    <div id="cropWrap"><canvas id="crop" width="300" height="120"></canvas></div>
+    <div class="chips" id="ratios">
+      <button data-r="0" class="act">Libre</button><button data-r="1">1:1</button><button data-r="1.3333">4:3</button><button data-r="0.75">3:4</button><button data-r="1.7778">16:9</button>
+    </div>
+    <div class="row">
+      <button class="btn" id="rot">⟳ Pivoter</button>
+      <button class="btn" id="resetCrop">Image entière</button>
+    </div>
+    <div class="field"><span>Type d'image</span>
+      <select id="imgMode"><option value="photo">Photo (tramée)</option><option value="net">Net : QR code, texte, dessin</option></select></div>
+    <div class="field" id="ditherRow"><span>Tramage</span>
+      <select id="dither"><option value="fs">Floyd-Steinberg (détaillé)</option><option value="atk">Atkinson (contrasté)</option><option value="bayer">Trame régulière</option><option value="thr">Noir et blanc simple</option></select></div>
+    <div class="field"><span>Luminosité <b id="brightV"></b></span><input type="range" id="bright" min="-60" max="60"></div>
+    <div class="field"><span>Contraste <b id="contrastV"></b></span><input type="range" id="contrast" min="-60" max="80"></div>
+    <div class="field" id="thrRow"><span>Seuil noir/blanc <b id="thrV"></b></span><input type="range" id="thr" min="40" max="220"></div>
+    <div class="hint">Pour un QR code Canva : enregistre-le en PNG, choisis-le ici, mode « Net ».</div>
+  </section>
+
+  <!-- TEXTE -->
+  <section id="t-txt" class="tab" hidden>
+    <details id="ai">
+      <summary>✨ Générer le texte avec l'IA</summary>
+      <div class="field"><span>Ta demande</span><textarea id="aiPrompt" placeholder="Ex : un petit poème sur le roller derby / une liste de courses pour une soirée crêpes"></textarea></div>
+      <div class="row"><select id="aiLen"><option value="court">Court</option><option value="moyen">Moyen</option><option value="long">Long</option></select>
+        <button class="btn primary" id="aiGo">Générer</button></div>
+      <div class="hint" id="aiHint"></div>
+    </details>
+    <div class="field"><span>Texte à imprimer</span><textarea id="txt" placeholder="Écris ou colle ton texte ici"></textarea></div>
+    <div class="row">
+      <div class="field"><span>Police</span><select id="tFont">
+        <option value="sans-serif">Sans</option><option value="serif">Serif</option><option value="monospace">Machine</option><option value="cursive">Manuscrit</option></select></div>
+      <div class="field"><span>Alignement</span><select id="tAlign"><option value="left">Gauche</option><option value="center">Centré</option><option value="right">Droite</option></select></div>
+    </div>
+    <div class="field"><span>Taille <b id="tSizeV"></b></span><input type="range" id="tSize" min="16" max="90"></div>
+    <div class="field"><span>Interligne <b id="tLineV"></b></span><input type="range" id="tLine" min="1" max="2" step="0.05"></div>
+    <label class="chk"><input type="checkbox" id="tBold"> Gras</label>
+  </section>
+
+  <!-- ETIQUETTE -->
+  <section id="t-lbl" class="tab" hidden>
+    <div class="field"><span>Texte de l'étiquette</span><textarea id="lText" placeholder="Ex : Confiture fraise&#10;11/2026"></textarea></div>
+    <div class="row">
+      <div class="field"><span>Orientation</span><select id="lRot"><option value="0">Normale</option><option value="90">Pivotée ↻</option><option value="270">Pivotée ↺</option></select></div>
+      <div class="field"><span>Bordure</span><select id="lBorder"><option value="none">Aucune</option><option value="simple">Simple</option><option value="double">Double</option><option value="round">Arrondie</option><option value="dash">Pointillée</option></select></div>
+    </div>
+    <div class="row">
+      <div class="field"><span>Alignement</span><select id="lAlign"><option value="center">Centré</option><option value="left">Gauche</option><option value="right">Droite</option></select></div>
+      <div class="field"><span id="lDimLabel">Hauteur (mm)</span><input type="number" id="lDim" min="8" max="200"></div>
+    </div>
+    <div class="field"><span>Taille du texte <b id="lSizeV"></b></span><input type="range" id="lSize" min="14" max="120"></div>
+    <label class="chk"><input type="checkbox" id="lAuto"> Réduire automatiquement pour que ça rentre</label>
+    <label class="chk"><input type="checkbox" id="lBold"> Gras</label>
+    <label class="chk"><input type="checkbox" id="lInv"> Inversé (blanc sur noir)</label>
+  </section>
+
+  <!-- REGLAGES -->
+  <section id="t-set" class="tab" hidden>
+    <details open>
+      <summary>🔌 Connexion Bluetooth</summary>
+      <div class="row"><button class="btn primary" id="bConn">Connecter</button><button class="btn" id="bConnAll">Tous les appareils</button></div>
+      <button class="btn" id="bDisc">Déconnecter</button>
+      <div class="field"><span>Canal d'écriture</span><select id="chSel"></select></div>
+      <button class="btn" id="bProbe">Sonder tous les canaux (imprime des numéros)</button>
+      <button class="btn" id="bTest">Impression de test</button>
+      <div class="hint">« Tous les appareils » sert si ton imprimante n'apparaît pas dans la liste. Si aucun canal d'écriture n'apparaît, regarde le journal en bas.</div>
+    </details>
+    <details>
+      <summary>🖨️ Impression</summary>
+      <div class="field"><span>Largeur du papier (points)</span><select id="width" data-num="1"><option value="384">384 (A6 standard)</option><option value="576">576 (A6+ / 300 dpi)</option></select></div>
+      <div class="field"><span>Noirceur</span><select id="density" data-num="1"><option value="0">Claire</option><option value="1">Normale</option><option value="2">Foncée</option></select></div>
+      <div class="field"><span>Papier avancé après impression <b id="feedV"></b></span><input type="range" id="feed" min="0" max="200" step="5"></div>
+      <div class="field"><span>Écart entre copies <b id="gapV"></b></span><input type="range" id="gap" min="0" max="120" step="4"></div>
+      <div class="field"><span>Taille des paquets Bluetooth</span><select id="chunk" data-num="1"><option value="0">Auto (1 ligne)</option><option value="20">20 octets (très sûr)</option><option value="100">100 octets</option><option value="200">200 octets</option></select></div>
+      <div class="field"><span>Pause entre paquets (ms) <b id="delayV"></b></span><input type="range" id="delay" min="0" max="60"></div>
+      <div class="field"><span>Mode d'écriture</span><select id="writeMode"><option value="auto">Auto</option><option value="resp">Avec accusé de réception (lent, sûr)</option></select></div>
+    </details>
+    <details>
+      <summary>✨ Clé API pour la génération de texte</summary>
+      <div class="field"><span>Clé API Anthropic</span><input type="password" id="apiKey" placeholder="sk-ant-..." autocomplete="off"></div>
+      <div class="field"><span>Modèle</span><input type="text" id="model"></div>
+      <div class="hint">La clé reste uniquement dans ce téléphone. L'API est facturée à part de l'abonnement Claude (console.anthropic.com).</div>
+    </details>
+    <details open>
+      <summary>📋 Journal</summary>
+      <div id="log"></div>
+      <button class="btn" id="bCopyLog">Copier le journal</button>
+    </details>
+  </section>
+</main>
+
+<div id="bar" hidden>
+  <div class="in">
+    <div class="prev" id="prevBox"><canvas id="prev" width="8" height="8"></canvas></div>
+    <div id="prog"><i></i></div>
+    <div class="row">
+      <div id="copiesBox" class="fix"><span>×</span><input type="number" id="copies" min="1" max="30" value="1"></div>
+      <button class="btn primary big" id="printBtn">🖨️ Imprimer</button>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* ====================== Utilitaires ====================== */
+const $=id=>document.getElementById(id);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const store={
+  get(k,d){try{const v=localStorage.getItem('mp_'+k);return v===null?d:JSON.parse(v)}catch(e){return d}},
+  set(k,v){try{localStorage.setItem('mp_'+k,JSON.stringify(v))}catch(e){}}
+};
+function toast(msg,ms=3500){const t=$('toast');t.textContent=msg;t.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('on'),ms)}
+function log(m){
+  const l=$('log');const t=new Date().toLocaleTimeString('fr-FR');
+  l.textContent+='['+t+'] '+m+'\n';
+  const a=l.textContent.split('\n');if(a.length>300)l.textContent=a.slice(-250).join('\n');
+  l.scrollTop=l.scrollHeight;console.log(m);
+}
+const hex=b=>Array.from(b).map(x=>x.toString(16).padStart(2,'0')).join(' ');
+
+/* ====================== Etat / réglages ====================== */
+const S=Object.assign({width:384,density:1,feed:80,gap:16,chunk:0,delay:8,writeMode:'auto',apiKey:'',model:'claude-haiku-5-5'},store.get('S',{}));
+const P=Object.assign({imgMode:'photo',dither:'fs',bright:0,contrast:0,thr:128,save:true,instant:false},store.get('P',{}));
+const T=Object.assign({text:'',size:32,font:'sans-serif',bold:false,align:'left',line:1.2},store.get('T',{}));
+const L=Object.assign({text:'',size:56,bold:true,align:'center',border:'simple',rot:'0',dim:25,auto:true,inv:false},store.get('L',{}));
+const AI=Object.assign({len:'moyen',prompt:''},store.get('AI',{}));
+
+/* ====================== Traitement d'image (fonctions pures) ====================== */
+function bayerMatrix(n){
+  if(n===1)return [[0]];
+  const m=bayerMatrix(n/2),s=n/2,r=Array.from({length:n},()=>Array(n).fill(0));
+  for(let y=0;y<s;y++)for(let x=0;x<s;x++){const v=m[y][x]*4;r[y][x]=v;r[y][x+s]=v+2;r[y+s][x]=v+3;r[y+s][x+s]=v+1}
+  return r;
+}
+const BAYER8=bayerMatrix(8);
+
+function toGray(img){
+  const n=img.width*img.height,g=new Float32Array(n),d=img.data;
+  for(let i=0;i<n;i++){
+    const a=d[i*4+3]/255,l=0.299*d[i*4]+0.587*d[i*4+1]+0.114*d[i*4+2];
+    g[i]=l*a+255*(1-a);
+  }
+  return g;
+}
+function adjust(g,bright,contrast){
+  const f=(259*(contrast+255))/(255*(259-contrast)),b=bright*2.55;
+  for(let i=0;i<g.length;i++){const v=f*(g[i]-128)+128+b;g[i]=v<0?0:v>255?255:v}
+}
+/* retourne Uint8Array (largeur/8 octets par ligne), bit 1 = point noir, MSB en premier */
+function ditherToBits(g,w,h,mode,thr){
+  const rb=Math.ceil(w/8),out=new Uint8Array(rb*h);
+  const set=(x,y)=>{out[y*rb+(x>>3)]|=(0x80>>(x&7))};
+  if(mode==='thr'){
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(g[y*w+x]<thr)set(x,y);
+  }else if(mode==='bayer'){
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+      const t=(BAYER8[y&7][x&7]+0.5)/64*255;
+      if(g[y*w+x]<t)set(x,y);
+    }
+  }else if(mode==='atk'){
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+      const i=y*w+x,old=g[i],nv=old<128?0:255,e=(old-nv)/8;
+      if(nv===0)set(x,y);
+      if(x+1<w)g[i+1]+=e;
+      if(x+2<w)g[i+2]+=e;
+      if(y+1<h){
+        if(x>0)g[i+w-1]+=e;
+        g[i+w]+=e;
+        if(x+1<w)g[i+w+1]+=e;
+      }
+      if(y+2<h)g[i+2*w]+=e;
+    }
+  }else{ /* Floyd-Steinberg */
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+      const i=y*w+x,old=g[i],nv=old<128?0:255,e=old-nv;
+      if(nv===0)set(x,y);
+      if(x+1<w)g[i+1]+=e*7/16;
+      if(y+1<h){
+        if(x>0)g[i+w-1]+=e*3/16;
+        g[i+w]+=e*5/16;
+        if(x+1<w)g[i+w+1]+=e/16;
+      }
+    }
+  }
+  return out;
+}
+/* Découpe un bitmap en trames à envoyer : [{data,unit}] */
+const RESET=Uint8Array.of(0x10,0xff,0xfe,0x01,0,0,0,0,0,0,0,0,0,0,0,0);
+function framesForBitmap(bm,density,feed){
+  const rb=bm.w/8,frames=[];
+  for(let y0=0;y0<bm.h;y0+=255){
+    const n=Math.min(255,bm.h-y0);
+    frames.push({data:Uint8Array.of(0x10,0xff,0x10,0x00,density),unit:20});
+    frames.push({data:RESET,unit:20});
+    frames.push({data:Uint8Array.of(0x1d,0x76,0x30,0x00,rb&255,rb>>8,n&255,n>>8),unit:20});
+    frames.push({data:bm.data.subarray(y0*rb,(y0+n)*rb),unit:rb,rows:n});
+  }
+  if(feed>0)frames.push({data:Uint8Array.of(0x1b,0x4a,Math.min(255,feed)),unit:20});
+  return frames;
+}
+
+/* mise à l'échelle de qualité (réduction par moitiés successives) */
+function scaleCrop(src,sx,sy,sw,sh,dw,dh){
+  let cur=document.createElement('canvas');
+  cur.width=Math.max(1,Math.round(sw));cur.height=Math.max(1,Math.round(sh));
+  cur.getContext('2d').drawImage(src,sx,sy,sw,sh,0,0,cur.width,cur.height);
+  while(cur.width/2>=dw&&cur.height/2>=dh){
+    const n=document.createElement('canvas');n.width=Math.floor(cur.width/2);n.height=Math.floor(cur.height/2);
+    const nx=n.getContext('2d');nx.imageSmoothingQuality='high';nx.drawImage(cur,0,0,n.width,n.height);cur=n;
+  }
+  const out=document.createElement('canvas');out.width=dw;out.height=dh;
+  const ox=out.getContext('2d');ox.fillStyle='#fff';ox.fillRect(0,0,dw,dh);
+  ox.imageSmoothingQuality='high';ox.drawImage(cur,0,0,dw,dh);
+  return out;
+}
+function imageToBitmap(src,crop){
+  const W=S.width,H=clamp(Math.round(W*crop.h/crop.w),8,6000);
+  const c=scaleCrop(src,crop.x,crop.y,crop.w,crop.h,W,H);
+  const g=toGray(c.getContext('2d').getImageData(0,0,W,H));
+  adjust(g,P.bright,P.contrast);
+  if(P.imgMode==='net')return{w:W,h:H,data:ditherToBits(g,W,H,'thr',P.thr)};
+  return{w:W,h:H,data:ditherToBits(g,W,H,P.dither,128)};
+}
+function canvasToBitmap(c,thr=150){
+  const g=toGray(c.getContext('2d').getImageData(0,0,c.width,c.height));
+  return{w:c.width,h:c.height,data:ditherToBits(g,c.width,c.height,'thr',thr)};
+}
+function bitmapToCanvas(bm){
+  const c=document.createElement('canvas');c.width=bm.w;c.height=bm.h;
+  const x=c.getContext('2d'),id=x.createImageData(bm.w,bm.h),rb=bm.w/8;
+  for(let y=0;y<bm.h;y++)for(let i=0;i<bm.w;i++){
+    const black=(bm.data[y*rb+(i>>3)]>>(7-(i&7)))&1,o=(y*bm.w+i)*4,v=black?0:255;
+    id.data[o]=id.data[o+1]=id.data[o+2]=v;id.data[o+3]=255;
+  }
+  x.putImageData(id,0,0);return c;
+}
+
+/* ====================== Rendu texte / étiquettes ====================== */
+function wrapText(ctx,text,maxW){
+  const out=[];
+  for(const para of text.split('\n')){
+    if(para.trim()===''){out.push('');continue}
+    let cur='';
+    for(const word of para.split(/\s+/).filter(Boolean)){
+      const t=cur?cur+' '+word:word;
+      if(ctx.measureText(t).width<=maxW){cur=t;continue}
+      if(cur){out.push(cur);cur=''}
+      if(ctx.measureText(word).width<=maxW){cur=word;continue}
+      let piece='';
+      for(const ch of word){
+        if(ctx.measureText(piece+ch).width>maxW&&piece){out.push(piece);piece=ch}else piece+=ch;
+      }
+      cur=piece;
+    }
+    out.push(cur);
+  }
+  return out;
+}
+function renderText(text,o){
+  const W=S.width,pad=12;
+  const c=document.createElement('canvas');c.width=W;c.height=10;
+  let x=c.getContext('2d');
+  const font=(o.bold?'700 ':'400 ')+o.size+'px '+o.font;
+  x.font=font;
+  const lines=wrapText(x,text,W-2*pad),lh=Math.round(o.size*o.line);
+  c.height=Math.max(lh+2*pad,lines.length*lh+2*pad);
+  x=c.getContext('2d');
+  x.fillStyle='#fff';x.fillRect(0,0,W,c.height);
+  x.fillStyle='#000';x.font=font;x.textBaseline='middle';x.textAlign=o.align;
+  const tx=o.align==='left'?pad:o.align==='right'?W-pad:W/2;
+  lines.forEach((l,i)=>x.fillText(l,tx,pad+i*lh+lh/2));
+  return c;
+}
+function renderLabel(){
+  const W=S.width,dpm=W>=576?12:8,rot=L.rot;
+  const dim=Math.round(L.dim*dpm);
+  const bw=rot==='0'?W:dim,bh=rot==='0'?dim:W;
+  const c=document.createElement('canvas');c.width=bw;c.height=bh;
+  const x=c.getContext('2d');
+  x.fillStyle=L.inv?'#000':'#fff';x.fillRect(0,0,bw,bh);
+  const fg=L.inv?'#fff':'#000';
+  x.strokeStyle=fg;x.fillStyle=fg;
+  let inset=6;
+  const bt=L.border;
+  if(bt!=='none'){
+    x.lineWidth=4;
+    if(bt==='simple'){x.strokeRect(4,4,bw-8,bh-8);inset=16}
+    else if(bt==='double'){x.strokeRect(3,3,bw-6,bh-6);x.lineWidth=2;x.strokeRect(11,11,bw-22,bh-22);inset=24}
+    else if(bt==='round'){x.beginPath();x.roundRect(4,4,bw-8,bh-8,24);x.stroke();inset=20}
+    else if(bt==='dash'){x.setLineDash([14,10]);x.strokeRect(4,4,bw-8,bh-8);x.setLineDash([]);inset=16}
+  }
+  const text=L.text||' ',availW=bw-2*inset,availH=bh-2*inset;
+  let size=L.size,lines,lh;
+  for(;;){
+    x.font=(L.bold?'700 ':'400 ')+size+'px sans-serif';
+    lines=wrapText(x,text,availW);lh=Math.round(size*1.15);
+    if(!L.auto||size<=10||lines.length*lh<=availH)break;
+    size-=2;
+  }
+  x.textAlign=L.align;x.textBaseline='middle';
+  const tx=L.align==='left'?inset:L.align==='right'?bw-inset:bw/2;
+  const top=(bh-lines.length*lh)/2;
+  lines.forEach((l,i)=>x.fillText(l,tx,top+i*lh+lh/2));
+  if(rot==='0')return c;
+  const r=document.createElement('canvas');r.width=bh;r.height=bw;
+  const rx=r.getContext('2d');
+  if(rot==='90'){rx.translate(bh,0);rx.rotate(Math.PI/2)}else{rx.translate(0,bw);rx.rotate(-Math.PI/2)}
+  rx.drawImage(c,0,0);return r;
+}
+
+/* ====================== Image source + rognage ====================== */
+let IMG=null;
+const crp={crop:null,ar:0,scale:1,drag:null};
+const cv=$('crop'),cx=cv.getContext('2d');
+
+async function fileToCanvas(file){
+  let bmp;
+  try{bmp=await createImageBitmap(file,{imageOrientation:'from-image'})}
+  catch(e){bmp=await createImageBitmap(file)}
+  const m=4096,s=Math.min(1,m/Math.max(bmp.width,bmp.height));
+  const c=document.createElement('canvas');c.width=Math.round(bmp.width*s);c.height=Math.round(bmp.height*s);
+  const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);
+  x.drawImage(bmp,0,0,c.width,c.height);
+  if(bmp.close)bmp.close();
+  return c;
+}
+function setImage(c){
+  IMG=c;crp.crop={x:0,y:0,w:c.width,h:c.height};
+  layoutCropper();drawCropper();updatePreview();
+}
+function layoutCropper(){
+  if(!IMG)return;
+  const maxW=Math.min(window.innerWidth-40,520),maxH=Math.round(window.innerHeight*0.5);
+  const s=Math.min(maxW/IMG.width,maxH/IMG.height);
+  crp.scale=s;cv.width=Math.max(60,Math.round(IMG.width*s));cv.height=Math.max(60,Math.round(IMG.height*s));
+}
+function drawCropper(){
+  if(!IMG){cx.clearRect(0,0,cv.width,cv.height);return}
+  const s=crp.scale,c=crp.crop,W=cv.width,H=cv.height;
+  cx.drawImage(IMG,0,0,W,H);
+  const x=c.x*s,y=c.y*s,w=c.w*s,h=c.h*s;
+  cx.fillStyle='rgba(0,0,0,.55)';
+  cx.fillRect(0,0,W,y);cx.fillRect(0,y+h,W,H-y-h);cx.fillRect(0,y,x,h);cx.fillRect(x+w,y,W-x-w,h);
+  cx.strokeStyle='#fff';cx.lineWidth=2;cx.strokeRect(x,y,w,h);
+  cx.fillStyle='#ff7a45';
+  for(const [px,py] of [[x,y],[x+w,y],[x,y+h],[x+w,y+h]])cx.fillRect(px-8,py-8,16,16);
+}
+function cvPos(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)*(cv.width/r.width),y:(e.clientY-r.top)*(cv.height/r.height)}}
+cv.addEventListener('pointerdown',e=>{
+  if(!IMG)return;
+  const p=cvPos(e),s=crp.scale,c=crp.crop;
+  const corners=[{n:'tl',x:c.x*s,y:c.y*s,ax:c.x+c.w,ay:c.y+c.h},{n:'tr',x:(c.x+c.w)*s,y:c.y*s,ax:c.x,ay:c.y+c.h},
+                 {n:'bl',x:c.x*s,y:(c.y+c.h)*s,ax:c.x+c.w,ay:c.y},{n:'br',x:(c.x+c.w)*s,y:(c.y+c.h)*s,ax:c.x,ay:c.y}];
+  let hit=null,best=34;
+  for(const k of corners){const d=Math.hypot(p.x-k.x,p.y-k.y);if(d<best){best=d;hit=k}}
+  if(hit)crp.drag={mode:'corner',ax:hit.ax,ay:hit.ay};
+  else if(p.x>=c.x*s&&p.x<=(c.x+c.w)*s&&p.y>=c.y*s&&p.y<=(c.y+c.h)*s)crp.drag={mode:'move',sx:p.x/s,sy:p.y/s,cx:c.x,cy:c.y};
+  if(crp.drag){cv.setPointerCapture(e.pointerId);e.preventDefault()}
+});
+cv.addEventListener('pointermove',e=>{
+  const d=crp.drag;if(!d)return;
+  const p=cvPos(e),s=crp.scale,c=crp.crop,px=p.x/s,py=p.y/s;
+  if(d.mode==='move'){
+    c.x=clamp(d.cx+px-d.sx,0,IMG.width-c.w);c.y=clamp(d.cy+py-d.sy,0,IMG.height-c.h);
+  }else{
+    const qx=clamp(px,0,IMG.width),qy=clamp(py,0,IMG.height);
+    const sx=qx<d.ax?-1:1,sy=qy<d.ay?-1:1;
+    let w=Math.abs(qx-d.ax),h=Math.abs(qy-d.ay);
+    if(crp.ar){
+      if(h===0||w/h>crp.ar)w=h*crp.ar;else h=w/crp.ar;
+      const mw=sx>0?IMG.width-d.ax:d.ax,mh=sy>0?IMG.height-d.ay:d.ay;
+      if(w>mw){w=mw;h=w/crp.ar}
+      if(h>mh){h=mh;w=h*crp.ar}
+    }
+    w=Math.max(w,24);h=Math.max(h,24);
+    c.x=sx>0?d.ax:d.ax-w;c.y=sy>0?d.ay:d.ay-h;c.w=Math.min(w,IMG.width);c.h=Math.min(h,IMG.height);
+    c.x=clamp(c.x,0,IMG.width-c.w);c.y=clamp(c.y,0,IMG.height-c.h);
+  }
+  drawCropper();
+});
+function endDrag(){if(crp.drag){crp.drag=null;updatePreview()}}
+cv.addEventListener('pointerup',endDrag);cv.addEventListener('pointercancel',endDrag);
+
+$('ratios').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b||!IMG)return;
+  document.querySelectorAll('#ratios button').forEach(x=>x.classList.toggle('act',x===b));
+  const ar=+b.dataset.r;crp.ar=ar;
+  if(ar){
+    const c=crp.crop,cxm=c.x+c.w/2,cym=c.y+c.h/2;
+    let w=c.w,h=w/ar;if(h>c.h){h=c.h;w=h*ar}
+    c.w=w;c.h=h;c.x=clamp(cxm-w/2,0,IMG.width-w);c.y=clamp(cym-h/2,0,IMG.height-h);
+  }
+  drawCropper();updatePreview();
+});
+$('resetCrop').onclick=()=>{if(!IMG)return;crp.crop={x:0,y:0,w:IMG.width,h:IMG.height};drawCropper();updatePreview()};
+$('rot').onclick=()=>{
+  if(!IMG)return;
+  const r=document.createElement('canvas');r.width=IMG.height;r.height=IMG.width;
+  const x=r.getContext('2d');x.translate(r.width,0);x.rotate(Math.PI/2);x.drawImage(IMG,0,0);
+  setImage(r);
+};
+$('pick').addEventListener('change',async e=>{
+  const f=e.target.files[0];if(!f)return;
+  try{setImage(await fileToCanvas(f));toast('Image chargée')}catch(err){toast('Image illisible');log('Erreur image : '+err.message)}
+  e.target.value='';
+});
+window.addEventListener('resize',()=>{if(IMG){layoutCropper();drawCropper()}});
+
+/* ====================== Aperçu ====================== */
+function getBitmap(){
+  if(cur==='img'){return IMG?imageToBitmap(IMG,crp.crop):null}
+  if(cur==='txt'){return T.text.trim()?canvasToBitmap(renderText(T.text,T)):null}
+  if(cur==='lbl'){return L.text.trim()?canvasToBitmap(renderLabel(),L.inv?150:150):null}
+  return null;
+}
+let prevTimer=0;
+function updatePreview(){
+  clearTimeout(prevTimer);
+  prevTimer=setTimeout(()=>{
+    const pc=$('prev'),bm=['img','txt','lbl'].includes(cur)?getBitmap():null;
+    if(!bm){pc.width=8;pc.height=8;pc.getContext('2d').fillStyle='#fff';pc.getContext('2d').fillRect(0,0,8,8);$('printBtn').disabled=true;return}
+    const c=bitmapToCanvas(bm);pc.width=c.width;pc.height=c.height;pc.getContext('2d').drawImage(c,0,0);
+    $('printBtn').disabled=false;
+  },60);
+}
+
+/* ====================== Bluetooth ====================== */
+const u16=n=>'0000'+n+'-0000-1000-8000-00805f9b34fb';
+const SERVICES=['ff00','ff10','ff12','ffe0','ffe5','fff0','ae00','ae30','af30','18f0','fee7','fe00','fd00','fc00','a000'].map(u16).concat([
+  '49535343-fe7d-4ae5-8fa9-9fafd205e455','6e400001-b5a3-f393-e0a9-e50e24dcca9e','e7810a71-73ae-499d-8c15-faa9aef0c3f2','0000ff00-0000-1000-8000-00805f9b34fb']);
+const KNOWN_CH=['ff02','2af1','ae01','ffe1','fff2','6e400002','bef8d6c9','49535343-8841','ff01','ff03'];
+const BT={dev:null,ch:null,list:[],forced:0};
+const short=u=>{const m=/^0000([0-9a-f]{4})-0000-1000-8000-00805f9b34fb$/i.exec(u);return m?m[1]:u};
+
+function setChip(){
+  const on=BT.dev&&BT.dev.gatt.connected&&BT.ch;
+  $('chip').className=on?'on':'';
+  $('chip').textContent=on?('● '+(BT.dev.name||'Imprimante')):'Imprimante : non connectée';
+}
+function scoreChar(e){
+  const p=e.c.properties;if(!(p.write||p.writeWithoutResponse))return -1;
+  let s=1;const u=e.c.uuid.toLowerCase();
+  if(KNOWN_CH.some(k=>u.includes(k)))s+=10;
+  if(p.writeWithoutResponse)s+=1;
+  const sv=short(e.svc.toLowerCase());
+  if(['180a','180f','1800','1801'].includes(sv))s-=100;
+  return s;
+}
+async function discover(server){
+  const svcs=await server.getPrimaryServices();
+  BT.list=[];
+  for(const s of svcs){
+    let chars=[];
+    try{chars=await s.getCharacteristics()}catch(e){log('Service '+short(s.uuid)+' illisible : '+e.message)}
+    for(const c of chars){
+      const p=c.properties,pr=['read','write','writeWithoutResponse','notify','indicate'].filter(k=>p[k]).join('+');
+      log('  service '+short(s.uuid)+' / car. '+short(c.uuid)+' ['+pr+']');
+      BT.list.push({svc:s.uuid,c});
+    }
+  }
+  const sel=$('chSel');sel.innerHTML='';
+  BT.list.forEach((e,i)=>{
+    const p=e.c.properties,w=p.write||p.writeWithoutResponse;
+    if(!w)return;
+    const o=document.createElement('option');o.value=i;
+    o.textContent='#'+i+'  '+short(e.svc)+' / '+short(e.c.uuid)+(p.writeWithoutResponse?' (rapide)':'');
+    sel.appendChild(o);
+  });
+  let best=-1,bi=-1;
+  BT.list.forEach((e,i)=>{const sc=scoreChar(e);if(sc>best){best=sc;bi=i}});
+  if(bi<0){BT.ch=null;log('Aucun canal d\'écriture trouvé.');return false}
+  const saved=store.get('ch',null);
+  const si=saved?BT.list.findIndex(e=>e.c.uuid===saved.c&&e.svc===saved.s&&scoreChar(e)>=0):-1;
+  if(si>=0)bi=si;
+  chooseChar(bi);
+  return true;
+}
+function chooseChar(i){
+  const e=BT.list[i];if(!e)return;
+  BT.ch=e.c;$('chSel').value=String(i);store.set('ch',{c:e.c.uuid,s:e.svc});
+  log('Canal choisi : '+short(e.svc)+' / '+short(e.c.uuid));
+  try{
+    if(e.c.properties.notify){}
+  }catch(_){}
+  setChip();
+}
+$('chSel').addEventListener('change',e=>chooseChar(+e.target.value));
+
+async function listenNotify(){
+  for(const e of BT.list){
+    if(e.c.properties.notify){
+      try{
+        await e.c.startNotifications();
+        e.c.addEventListener('characteristicvaluechanged',ev=>log('← '+short(e.c.uuid)+' : '+hex(new Uint8Array(ev.target.value.buffer))));
+      }catch(_){}
+    }
+  }
+}
+async function connect(all){
+  if(!navigator.bluetooth){toast('Web Bluetooth indisponible : utilise Chrome sur Android');return false}
+  const opts=all?{acceptAllDevices:true,optionalServices:SERVICES}
+    :{filters:[{namePrefix:'PeriPage'},{namePrefix:'Peri'},{namePrefix:'PPG'},{namePrefix:'A6'}],optionalServices:SERVICES};
+  log('Recherche de l\'imprimante…');
+  let dev;
+  try{dev=await navigator.bluetooth.requestDevice(opts)}
+  catch(e){log('Sélection annulée : '+e.message);if(e.name!=='NotFoundError')toast('Connexion annulée');return false}
+  BT.dev=dev;BT.forced=0;
+  dev.addEventListener('gattserverdisconnected',()=>{log('Imprimante déconnectée');setChip()});
+  return await attach();
+}
+async function attach(){
+  try{
+    log('Connexion à '+(BT.dev.name||'?')+'…');
+    const server=await BT.dev.gatt.connect();
+    const ok=await discover(server);
+    await listenNotify();
+    setChip();
+    if(!ok){toast('Connecté, mais aucun canal d\'écriture : voir Réglages › Journal');return false}
+    toast('Imprimante connectée');return true;
+  }catch(e){log('Échec de connexion : '+e.message);toast('Connexion impossible : '+e.message);return false}
+}
+async function ensureConnected(){
+  if(BT.dev&&BT.dev.gatt.connected&&BT.ch)return true;
+  if(BT.dev){log('Reconnexion…');if(await attach())return true}
+  return await connect(false);
+}
+$('chip').onclick=()=>connect(false);
+$('bConn').onclick=()=>connect(false);
+$('bConnAll').onclick=()=>connect(true);
+$('bDisc').onclick=()=>{if(BT.dev&&BT.dev.gatt.connected)BT.dev.gatt.disconnect();BT.ch=null;setChip()};
+
+async function writeOne(buf){
+  const ch=BT.ch,p=ch.properties;
+  const useNoResp=p.writeWithoutResponse&&S.writeMode!=='resp';
+  if(useNoResp)await ch.writeValueWithoutResponse(buf);
+  else if(ch.writeValueWithResponse)await ch.writeValueWithResponse(buf);
+  else await ch.writeValue(buf);
+}
+async function writeData(data,unit){
+  let o=0,fails=0;
+  while(o<data.length){
+    if(job.cancel)throw new Error('Impression annulée');
+    const size=BT.forced||S.chunk||unit;
+    const end=Math.min(data.length,o+size);
+    try{
+      await writeOne(data.subarray(o,end));
+      o=end;fails=0;
+      if(S.delay)await sleep(S.delay);
+    }catch(e){
+      fails++;
+      log('Erreur d\'écriture ('+size+' o) : '+e.message);
+      if(!BT.dev.gatt.connected)throw new Error('Imprimante déconnectée');
+      if(fails>=2&&size>20){BT.forced=20;log('→ paquets réduits à 20 octets');fails=0}
+      else if(fails>=6)throw e;
+      await sleep(60);
+    }
+  }
+}
+const job={busy:false,cancel:false};
+function setProg(f){$('prog').firstElementChild.style.width=Math.round(f*100)+'%'}
+
+async function sendBitmap(bm,feed,onRows){
+  for(const f of framesForBitmap(bm,S.density,feed)){
+    await writeData(f.data,f.unit);
+    if(f.rows&&onRows)onRows(f.rows);
+  }
+}
+async function printBitmaps(list){ /* list: [{bm,feed}] */
+  if(job.busy){job.cancel=true;return}
+  if(!await ensureConnected())return;
+  job.busy=true;job.cancel=false;
+  $('printBtn').textContent='⏹ Annuler';
+  const total=list.reduce((a,x)=>a+x.bm.h,0);let done=0;
+  try{
+    setProg(0);
+    for(const it of list){
+      await sendBitmap(it.bm,it.feed,n=>{done+=n;setProg(done/total)});
+    }
+    setProg(1);toast('Impression envoyée ✔');log('Impression terminée ('+total+' lignes)');
+  }catch(e){toast('Échec : '+e.message);log('Échec impression : '+e.message)}
+  finally{job.busy=false;job.cancel=false;$('printBtn').textContent='🖨️ Imprimer';setTimeout(()=>setProg(0),1200)}
+}
+$('printBtn').onclick=()=>{
+  if(job.busy){job.cancel=true;return}
+  const bm=getBitmap();if(!bm){toast('Rien à imprimer');return}
+  const n=clamp(parseInt($('copies').value)||1,1,30),list=[];
+  for(let i=0;i<n;i++)list.push({bm,feed:i<n-1?S.gap:S.feed});
+  printBitmaps(list);
+};
+$('bTest').onclick=()=>{
+  const c=renderText('TEST Mini Print\nABCDEFG abcdefg 0123456789\nLigne de contrôle ▀▄█',{size:26,font:'sans-serif',bold:false,align:'left',line:1.3});
+  printBitmaps([{bm:canvasToBitmap(c),feed:S.feed}]);
+};
+$('bProbe').onclick=async()=>{
+  if(!await ensureConnected())return;
+  const writable=BT.list.map((e,i)=>({e,i})).filter(x=>x.e.c.properties.write||x.e.c.properties.writeWithoutResponse);
+  const keep=BT.ch;
+  toast('Sonde en cours : note le numéro qui s\'imprime');
+  for(const w of writable){
+    BT.ch=w.e.c;
+    try{
+      const c=renderText('#'+w.i,{size:60,font:'sans-serif',bold:true,align:'center',line:1.1});
+      job.busy=true;job.cancel=false;
+      await sendBitmap(canvasToBitmap(c),20);
+      log('Sonde envoyée sur #'+w.i);
+    }catch(e){log('Sonde #'+w.i+' échouée : '+e.message)}
+    finally{job.busy=false}
+    await sleep(1200);
+  }
+  BT.ch=keep;
+  toast('Sélectionne dans « Canal d\'écriture » le numéro qui est sorti');
+};
+$('bCopyLog').onclick=async()=>{try{await navigator.clipboard.writeText($('log').textContent);toast('Journal copié')}catch(e){toast('Copie impossible')}};
+
+/* ====================== Caméra ====================== */
+let stream=null,facing='environment';
+async function startCam(){
+  const msg=$('camMsg'),v=$('video');
+  if(stream)return;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){msg.textContent='Caméra indisponible ici. Utilise le bouton « appareil photo du téléphone ».';msg.hidden=false;return}
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:facing},width:{ideal:4032},height:{ideal:3024}},audio:false});
+    v.srcObject=stream;await v.play();msg.hidden=true;
+  }catch(e){
+    stream=null;msg.hidden=false;
+    msg.textContent='Caméra refusée ou indisponible ('+e.name+'). Autorise la caméra pour ce site, ou utilise le bouton « appareil photo du téléphone ».';
+  }
+}
+function stopCam(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;$('video').srcObject=null;$('camMsg').hidden=false;$('camMsg').textContent='Caméra…'}}
+$('flip').onclick=async()=>{facing=facing==='environment'?'user':'environment';stopCam();await startCam()};
+function stamp(){const d=new Date(),p=n=>String(n).padStart(2,'0');return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds())}
+function saveToPhone(c){
+  c.toBlob(b=>{
+    if(!b)return;
+    const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='miniprint-'+stamp()+'.jpg';
+    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  },'image/jpeg',0.95);
+}
+$('shot').onclick=async()=>{
+  const v=$('video');
+  if(!stream||!v.videoWidth){toast('Caméra pas prête');return}
+  const c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;
+  c.getContext('2d').drawImage(v,0,0);
+  if(P.save)saveToPhone(c);
+  if(P.instant){
+    const bm=imageToBitmap(c,{x:0,y:0,w:c.width,h:c.height});
+    printBitmaps([{bm,feed:S.feed}]);
+    toast('Photo envoyée à l\'impression');
+  }else{
+    setImage(c);go('img');
+  }
+};
+$('nativeCam').addEventListener('change',async e=>{
+  const f=e.target.files[0];if(!f)return;
+  try{setImage(await fileToCanvas(f));go('img')}catch(err){toast('Image illisible')}
+  e.target.value='';
+});
+
+/* ====================== Génération de texte (IA) ====================== */
+function cplEstimate(){return Math.max(10,Math.floor((S.width-24)/(T.size*0.55)))}
+function updateAiHint(){$('aiHint').textContent='≈ '+cplEstimate()+' caractères par ligne avec la taille actuelle. Le texte généré arrive dans la zone ci-dessous, tu peux le modifier avant impression.'}
+$('aiGo').onclick=async()=>{
+  const prompt=$('aiPrompt').value.trim();
+  if(!prompt){toast('Écris une demande');return}
+  if(!S.apiKey){toast('Ajoute ta clé API dans Réglages');go('set');return}
+  const len={court:'2 à 4 lignes',moyen:'une dizaine de lignes',long:'une vingtaine de lignes'}[AI.len]||'une dizaine de lignes';
+  const sys="Tu écris un texte destiné à être imprimé sur une mini imprimante thermique étroite (environ "+cplEstimate()+" caractères par ligne). Réponds uniquement par le texte final, en français sauf demande contraire, sans markdown, sans astérisques ni titres avec #, sans introduction ni conclusion. Longueur visée : "+len+". Utilise des retours à la ligne utiles et évite les lignes très longues.";
+  const b=$('aiGo');b.disabled=true;b.textContent='…';
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{
+      'content-type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:S.model,max_tokens:1000,system:sys,messages:[{role:'user',content:prompt}]})});
+    const j=await r.json();
+    if(!r.ok)throw new Error((j.error&&j.error.message)||('HTTP '+r.status));
+    const text=(j.content||[]).filter(x=>x.type==='text').map(x=>x.text).join('').trim();
+    if(!text)throw new Error('Réponse vide');
+    $('txt').value=text;T.text=text;store.set('T',T);updatePreview();toast('Texte généré');
+  }catch(e){toast('IA : '+e.message,6000);log('Erreur IA : '+e.message)}
+  finally{b.disabled=false;b.textContent='Générer'}
+};
+
+/* ====================== Liaison des réglages ====================== */
+function bind(obj,key,id,saveKey,cb){
+  const el=$(id),chk=el.type==='checkbox',num=el.type==='range'||el.type==='number'||el.dataset.num;
+  const show=()=>{const o=$(id+'V');if(o)o.textContent=el.value};
+  if(chk)el.checked=!!obj[key];else el.value=obj[key];
+  show();
+  el.addEventListener('input',()=>{
+    obj[key]=chk?el.checked:(num?+el.value:el.value);
+    store.set(saveKey,obj);show();if(cb)cb();updatePreview();
+  });
+}
+bind(S,'width','width','S',()=>{if(IMG)updatePreview();syncLabelDim()});
+bind(S,'density','density','S');bind(S,'feed','feed','S');bind(S,'gap','gap','S');
+bind(S,'chunk','chunk','S');bind(S,'delay','delay','S');bind(S,'writeMode','writeMode','S');
+bind(S,'apiKey','apiKey','S');bind(S,'model','model','S');
+bind(P,'imgMode','imgMode','P',syncImgMode);bind(P,'dither','dither','P');
+bind(P,'bright','bright','P');bind(P,'contrast','contrast','P');bind(P,'thr','thr','P');
+bind(P,'save','optSave','P');bind(P,'instant','optInstant','P');
+bind(T,'text','txt','T',updateAiHint);bind(T,'font','tFont','T');bind(T,'align','tAlign','T');
+bind(T,'size','tSize','T',updateAiHint);bind(T,'line','tLine','T');bind(T,'bold','tBold','T');
+bind(L,'text','lText','L');bind(L,'rot','lRot','L',syncLabelDim);bind(L,'border','lBorder','L');
+bind(L,'align','lAlign','L');bind(L,'dim','lDim','L');bind(L,'size','lSize','L');
+bind(L,'auto','lAuto','L');bind(L,'bold','lBold','L');bind(L,'inv','lInv','L');
+bind(AI,'len','aiLen','AI');bind(AI,'prompt','aiPrompt','AI');
+function syncImgMode(){const net=P.imgMode==='net';$('ditherRow').hidden=net;$('thrRow').hidden=!net}
+function syncLabelDim(){$('lDimLabel').textContent=L.rot==='0'?'Hauteur (mm)':'Longueur (mm)'}
+syncImgMode();syncLabelDim();updateAiHint();
+
+/* ====================== Navigation ====================== */
+let cur='cam';
+function go(t){
+  cur=t;
+  document.querySelectorAll('.tab').forEach(s=>s.hidden=s.id!=='t-'+t);
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('act',b.dataset.t===t));
+  $('bar').hidden=!['img','txt','lbl'].includes(t);
+  if(t==='cam')startCam();else stopCam();
+  if(t==='img'&&IMG){layoutCropper();drawCropper()}
+  window.scrollTo(0,0);updatePreview();
+}
+$('nav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)go(b.dataset.t)});
+
+/* ====================== Démarrage ====================== */
+(function init(){
+  const warn=$('warn');
+  if(!navigator.bluetooth){warn.hidden=false;warn.textContent='Web Bluetooth indisponible : ouvre cette page dans Chrome sur Android, en HTTPS.'}
+  else if(!window.isSecureContext){warn.hidden=false;warn.textContent='Page non sécurisée : le Bluetooth ne marchera qu\'en HTTPS.'}
+  log('Mini Print prêt. Largeur '+S.width+' pts.');
+  if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+  go('cam');
+})();
+</script>
+</body>
+</html>
